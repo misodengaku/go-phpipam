@@ -3,6 +3,7 @@ package phpipam
 import (
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -141,6 +142,34 @@ func (c *Client) GetAddressPing(addressID string) (AddressPing, error) {
 		return addressPingData, errors.New(addressPingData.Message)
 	}
 	return addressPingData, nil
+}
+
+/*
+CreateAddress Client pointer method to create phpipam address using subnetID string,
+ip net.IP, hostname string and owner string, returns AddressFirstFree struct and error
+*/
+func (c *Client) CreateAddress(subnetID string, ip net.IP, hostname string, owner string, description string) (AddressFirstFree, error) {
+	var addressFirstFreeData AddressFirstFree
+	var reqBody string
+	if len(description) > 0 {
+		reqBody = "subnetId=" + subnetID + "&ip=" + ip.String() + "&hostname=" + hostname + "&owner=" + owner + "&description=" + url.QueryEscape(description)
+	} else {
+		reqBody = "subnetId=" + subnetID + "&ip=" + ip.String() + "&hostname=" + hostname + "&owner=" + owner
+	}
+	// fmt.Println(reqBody)
+	req, _ := http.NewRequest("POST", c.ServerURL+"/api/"+c.Application+"/addresses/?"+reqBody, strings.NewReader(reqBody))
+	body, err := c.Do(req)
+	if err != nil {
+		return addressFirstFreeData, err
+	}
+	err = json.Unmarshal([]byte(body), &addressFirstFreeData)
+	if err != nil {
+		return addressFirstFreeData, err
+	}
+	if addressFirstFreeData.Code != 201 {
+		return addressFirstFreeData, errors.New(addressFirstFreeData.Message)
+	}
+	return addressFirstFreeData, nil
 }
 
 /*
